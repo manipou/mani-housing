@@ -1,6 +1,6 @@
 local Config, Util = lib.load('config'), lib.load('open.sv_open')
 
-local HouseCache, PlayerCache, Initialized = {}, {}, false
+local HouseCache, PlayerCache, StashPins, Initialized = {}, {}, {}, false
 
 local HouseClass = {}
 HouseClass.__index = HouseClass
@@ -16,6 +16,7 @@ function HouseClass:New(Data)
         Decor = Data.Decor,
         SalesData = Data.SalesData,
         State = Data.State,
+        HasStashPin = Data.HasStashPin or false,
         Keyholders = {},
         Inside = {}
     }, self)
@@ -33,6 +34,7 @@ CreateThread(function()
                 `decor` LONGTEXT NULL DEFAULT '[]' COLLATE 'utf8mb4_0900_ai_ci',
                 `salesdata` LONGTEXT NOT NULL DEFAULT '[]' COLLATE 'utf8mb4_0900_ai_ci',
                 `state` INT(1) NOT NULL DEFAULT '0',
+                `stashpin` VARCHAR(4) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
                 INDEX `houseid` (`houseid`) USING BTREE
             )
             COLLATE='utf8mb4_0900_ai_ci'
@@ -41,6 +43,10 @@ CreateThread(function()
 
         Houses = {}
     end
+
+    pcall(function()
+        MySQL.query.await("ALTER TABLE `mani_houses` ADD COLUMN `stashpin` VARCHAR(4) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci'")
+    end)
 
     local KeySuccess, Keyholders = pcall(function() return MySQL.query.await('SELECT * FROM `mani_housekeys`') end)
     if not KeySuccess then
@@ -62,6 +68,8 @@ CreateThread(function()
     for i = 1, #Houses do
         local House = Houses[i]
 
+        local HasStashPin = House.stashpin ~= nil and House.stashpin ~= ''
+
         HouseCache[House.houseid] = HouseClass:New({
             HouseId = House.houseid,
             Owner = House.owner,
@@ -70,8 +78,13 @@ CreateThread(function()
             Decor = json.decode(House.decor),
             SalesData = json.decode(House.salesdata),
             State = House.state,
+            HasStashPin = HasStashPin,
             Keyholders = {}
         })
+
+        if HasStashPin then
+            StashPins[House.houseid] = House.stashpin
+        end
     end
 
     for i = 1, #Keyholders do
@@ -321,6 +334,51 @@ lib.callback.register('mani-housing:server:RegisterStash', function(Source, Hous
     exports['mani-bridge']:RegisterStash(('housestash_%s'):format(House.HouseId), locale('Misc.StashName'), Shell.Stash.Slots, Shell.Stash.Weight)
 
     return true
+end)
+
+lib.callback.register('mani-housing:server:SetStashPin', function(Source, Data)
+    local House = HouseCache[Data.HouseId]
+    if not House then return false, locale('Notify.HouseNotExist') end
+
+    local PlayerData = exports['mani-bridge']:GetPlayerData(Source)
+    if not PlayerData then return false, locale('Notify.GenericError') end
+
+    if House.Owner ~= PlayerData.Identifier then return false, locale('Notify.NoPermission') end
+
+    local Pin = tostring(Data.Pin or '')
+    if not Pin:match('^%d%d%d%d$') then return false, locale('Notify.InvalidPin') end
+
+    local IsChangingPin = StashPins[Data.HouseId] ~= nil
+
+    if IsChangingPin then
+        if not exports['mani-bridge']:RemoveMoneyAuto(Source, { 'bank' }, Config.StashPinEditCost) then
+            return false, locale('Notify.CannotAfford')
+        end
+    end
+
+    House:SetStashPin(Pin)
+
+    Util.Log(Source, ('[Housing] [%s] | %s %s the stash code on house (HouseID: %s)'):format(
+        Source,
+        PlayerData.Character.Firstname,
+        IsChangingPin and 'changed' or 'set',
+        Data.HouseId
+    ))
+
+    return true, IsChangingPin and locale('Notify.StashPinChanged') or locale('Notify.StashPinSet')
+end)
+
+lib.callback.register('mani-housing:server:VerifyStashPin', function(Source, Data)
+    local House = HouseCache[Data.HouseId]
+    if not House then return false end
+
+    local PlayerData = exports['mani-bridge']:GetPlayerData(Source)
+    if not PlayerData then return false end
+
+    local Pin = StashPins[Data.HouseId]
+    if not Pin then return true end
+
+    return tostring(Data.Pin) == Pin
 end)
 
 lib.callback.register('mani-housing:server:EnterHouse', function(Source, HouseId)
@@ -599,6 +657,21 @@ function HouseClass:PlaceStash(Coords)
     self:RunAction(function(HouseSource)
         TriggerClientEvent('mani-housing:client:UpdatePoint', HouseSource, self.Coords.Stash, 'Stash')
     end)
+end
+
+---@param Pin string
+function HouseClass:SetStashPin(Pin)
+    self = HouseCache[self.HouseId]
+    if not self then return end
+
+    StashPins[self.HouseId] = Pin
+    self.HasStashPin = true
+
+    MySQL.update.await('UPDATE mani_houses SET stashpin = ? WHERE houseid = ?', {
+        Pin, self.HouseId
+    })
+
+    TriggerClientEvent('mani-housing:client:UpdateHouse', -1, self, 'Update')
 end
 
 ---@param Coords vector3

@@ -1,6 +1,6 @@
 local Config = {}
 
-Config.Debug = true
+Config.Debug = true -- TODO: Remove Debug when on live server
 
 Config.WhitelistedJobs = {
 	'realestate'
@@ -23,6 +23,11 @@ Config.Commision = {
 	['Agent'] = 0.02, -- Comment out, if Seller shoulnd't receive commision
 	['Owner'] = 1.0
 }
+
+Config.StashPinEditCost = 10000
+
+-- 'rcore_clothing' | 'illenium-appearance' | 'custom' (fill in your own logic in open/cl_open.lua)
+Config.Clothing = 'rcore_clothing'
 
 Config.Blips = {
 	['Owned'] = {

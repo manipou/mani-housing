@@ -2,10 +2,12 @@
     import { visibilityStore as visibility, House, NearbyPlayers, Current, Locales, Props } from "$lib/stores/VisibilityStore";
     import { fetchNui } from "$lib/utils/fetchNui";
     import SelectPlayer from "./components/SelectPlayer.svelte";
+    import Input from "./components/Input.svelte";
 
     let expanded = $state({});
     let editingPermissions = $state({});
     let showSelectPlayer = $state(false);
+    let showStashPinInput = $state(false);
 
     function toggleExpanded(identifier: string, data: any) {
         if (!expanded[identifier]) {
@@ -58,12 +60,30 @@
 
     function placeWardrobe() {
         fetchNui("PlaceWardrobe");
-        visibility.hide();
+        Current.set("guide");
     }
 
     function placeStash() {
         fetchNui("PlaceStash");
-        visibility.hide();
+        Current.set("guide");
+    }
+
+    function setStashPin() {
+        showStashPinInput = true;
+    }
+
+    function handleStashPinConfirm(e: CustomEvent) {
+        showStashPinInput = false;
+        if (e.detail == null) return;
+
+        fetchNui("SetStashPin", {
+            HouseId: $House.HouseId,
+            Pin: e.detail
+        }).then(Data => {
+            if (Data.Success) {
+                $House.HasStashPin = true;
+            }
+        });
     }
 
     function startDecorating() {
@@ -307,7 +327,11 @@
                             <i class="fas fa-box text-purple-400 w-5 h-5"></i>
                             {$Locales["UI.PlaceStash"]}
                         </button>
-                        <button 
+                        <button onclick={setStashPin} class="w-full bg-[#1e1e1e] border border-[#333333] rounded-md p-3 text-left hover:bg-[#2a2a2a] transition-colors text-sm text-white flex items-center gap-3">
+                            <i class="fas fa-lock text-purple-400 w-5 h-5"></i>
+                            {$House.HasStashPin ? $Locales["UI.ChangeStashPin"] : $Locales["UI.SetStashPin"]}
+                        </button>
+                        <button
                             disabled={false}
                             onclick={startDecorating}
                             class="w-full bg-[#1e1e1e] border border-[#333333] rounded-md p-3 text-left hover:bg-[#2a2a2a] transition-colors text-sm text-white flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -324,6 +348,18 @@
 
 {#if showSelectPlayer}
     <SelectPlayer on:submit={GiveKey} on:close={CloseModal} />
+{/if}
+
+{#if showStashPinInput}
+    <Input
+        on:confirm={handleStashPinConfirm}
+        title={$House.HasStashPin ? $Locales["UI.ChangeStashPin"] : $Locales["UI.SetStashPin"]}
+        message={$House.HasStashPin ? $Locales["UI.ChangeStashPinConfirm"] : $Locales["UI.SetStashPinConfirm"]}
+        placeholder={$Locales["UI.EnterStashPin"]}
+        inputType="text"
+        maxlength={4}
+        pattern={'\\d{4}'}
+    />
 {/if}
 
 <style>

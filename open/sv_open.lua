@@ -5,7 +5,7 @@ local Webhook = ''
 ---@param Job string
 ---@param Amount number
 function Util.AddMoneyForJob(Job, Amount)
-    
+
 end
 
 ---@param Source number

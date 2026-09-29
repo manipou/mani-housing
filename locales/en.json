@@ -8,7 +8,11 @@
         "NoPermission": "You do not have permission to perform this action.",
         "CannotAfford": "You cannot afford to do this.",
         "HouseNotForSale": "This house is not for sale.",
-        "HouseCreated": "You've created a house."
+        "HouseCreated": "You've created a house.",
+        "WrongPin": "Incorrect stash code.",
+        "InvalidPin": "The stash code must be 4 digits.",
+        "StashPinSet": "Stash code has been set.",
+        "StashPinChanged": "Stash code has been changed."
     },
     "3DText": {
         "EnterHouse": "[~g~E~s~] Enter House",
@@ -20,7 +24,7 @@
         "HouseInformation": "[~g~H~s~] View house information"
     },
     "Misc": {
-        "StashName": "House Stash",
+        "StashName": "House Stash"
     },
     "UI": {
         "RealEstate": "Real Estate",
@@ -78,7 +82,17 @@
 
         "SelectEntrance": "to select entrance",
         "SelectGarage": "to select entrance",
+        "SelectWardrobe": "to place wardrobe",
+        "SelectStash": "to place stash",
         "Press": "Press",
+
+        "SetStashPin": "Set Stash Code",
+        "ChangeStashPin": "Change Stash Code",
+        "SetStashPinConfirm": "Set a 4-digit code to lock the stash. Anyone without it will be unable to open it.",
+        "ChangeStashPinConfirm": "Changing the stash code costs $10,000. Enter the new 4-digit code.",
+        "EnterStashPin": "Enter 4-digit code...",
+        "StashPinTitle": "Stash Code",
+        "StashPinLabel": "Enter the 4-digit stash code",
 
         "EditProperty": "Edit Property",
         "HouseNotFound": "House not found.",
